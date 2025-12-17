@@ -1,4 +1,4 @@
-USE ROLE accountadmin;
+USE ROLE ddl_accelerator_gtm_prod_adv_curate_role;
 
 CREATE OR REPLACE WAREHOUSE tasty_bytes_dbt_wh
     WAREHOUSE_SIZE = 'small'
@@ -8,6 +8,9 @@ CREATE OR REPLACE WAREHOUSE tasty_bytes_dbt_wh
     INITIALLY_SUSPENDED = TRUE
     COMMENT = 'warehouse for tasty bytes dbt demo';
 
+grant usage on warehouse tasty_bytes_dbt_wh to ddl_accelerator_gtm_prod_adv_curate_role;
+
+
 USE WAREHOUSE tasty_bytes_dbt_wh;
 
 CREATE DATABASE IF NOT EXISTS tasty_bytes_dbt_db;
@@ -15,7 +18,7 @@ CREATE OR REPLACE SCHEMA tasty_bytes_dbt_db.raw;
 CREATE OR REPLACE SCHEMA tasty_bytes_dbt_db.dev;
 CREATE OR REPLACE SCHEMA tasty_bytes_dbt_db.prod;
 
-
+/*
 ALTER SCHEMA tasty_bytes_dbt_db.dev SET LOG_LEVEL = 'INFO';
 ALTER SCHEMA tasty_bytes_dbt_db.dev SET TRACE_LEVEL = 'ALWAYS';
 ALTER SCHEMA tasty_bytes_dbt_db.dev SET METRIC_LEVEL = 'ALL';
@@ -28,7 +31,7 @@ CREATE OR REPLACE API INTEGRATION git_integration
   API_PROVIDER = git_https_api
   API_ALLOWED_PREFIXES = ('https://github.com/')
   ENABLED = TRUE;
-
+*/
 CREATE OR REPLACE FILE FORMAT tasty_bytes_dbt_db.public.csv_ff 
 type = 'csv';
 
@@ -213,3 +216,21 @@ FROM @tasty_bytes_dbt_db.public.s3load/raw_pos/order_detail/;
 
 -- setup completion note
 SELECT 'tasty_bytes_dbt_db setup is now complete' AS note;
+
+
+-- Create NETWORK RULE for external access integration
+
+CREATE OR REPLACE NETWORK RULE dbt_network_rule
+  MODE = EGRESS
+  TYPE = HOST_PORT
+  -- Minimal URL allowlist that is required for dbt deps
+  VALUE_LIST = (
+    'hub.getdbt.com',
+    'codeload.github.com'
+    );
+
+-- Create EXTERNAL ACCESS INTEGRATION for dbt access to external dbt package locations
+
+CREATE OR REPLACE EXTERNAL ACCESS INTEGRATION dbt_ext_access
+  ALLOWED_NETWORK_RULES = (dbt_network_rule)
+  ENABLED = TRUE;
